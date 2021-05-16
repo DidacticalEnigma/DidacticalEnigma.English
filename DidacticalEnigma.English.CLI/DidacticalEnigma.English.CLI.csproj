@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DidacticalEnigma.English.Core\DidacticalEnigma.English.Core.csproj" />
+      <ProjectReference Include="..\DidacticalEnigma.English.Parsing\DidacticalEnigma.English.Parsing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Optional" Version="4.0.0" />
+    </ItemGroup>
+
+</Project>

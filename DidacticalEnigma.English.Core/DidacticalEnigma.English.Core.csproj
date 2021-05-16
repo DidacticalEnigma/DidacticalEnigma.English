@@ -4,4 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="TinyIndex" Version="0.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DidacticalEnigma.English.Parsing\DidacticalEnigma.English.Parsing.csproj" />
+  </ItemGroup>
+
 </Project>

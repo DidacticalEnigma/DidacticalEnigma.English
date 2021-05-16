@@ -24,8 +24,13 @@ namespace DidacticalEnigma.English.CLI
                 HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
                     .Concat(HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/SyllablesUpdate.txt", " ", latin1)));
             string? line;
-            while ((line = Console.ReadLine()) != null)
+            while (true)
             {
+                Console.Write("> ");
+                line = Console.ReadLine();
+                if (line == null)
+                    break;
+                
                 var resultOpt = BinarySearch(
                     hyphenationList,
                     (list, index) => list[index],

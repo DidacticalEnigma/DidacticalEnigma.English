@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DidacticalEnigma.English.Parsing\DidacticalEnigma.English.Parsing.csproj" />
+    <PackageReference Include="NHyphenator" Version="2.0.0" />
   </ItemGroup>
 
 </Project>

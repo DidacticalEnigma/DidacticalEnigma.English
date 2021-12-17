@@ -7,6 +7,8 @@ using System.Xml.Serialization;
 using DidacticalEnigma.English.Core;
 using DidacticalEnigma.English.Parsing;
 using DidacticalEnigma.English.Parsing.Models;
+using NHyphenator;
+using NHyphenator.Loaders;
 using Optional;
 
 namespace DidacticalEnigma.English.CLI
@@ -20,10 +22,15 @@ namespace DidacticalEnigma.English.CLI
                 "/media/milleniumbug/stuff/asdf/english_resources/wordnet.cache");
             
             var latin1 = Encoding.GetEncoding("iso-8859-1");
-            var hyphenationList = new List<HyphenationInfo>(
-                HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
-                    .Concat(HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/SyllablesUpdate.txt", " ", latin1)));
+            var hyphenationList = HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
+                    .Concat(HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/SyllablesUpdate.txt", " ", latin1))
+                    .OrderBy(hyphentationInfo => hyphentationInfo.Word, StringComparer.InvariantCulture)
+                    .ToList();
             string? line;
+            
+            var loader = new ResourceHyphenatePatternsLoader(HyphenatePatternsLanguage.EnglishUs);
+            Hyphenator hypenator = new Hyphenator(loader, "-");
+
             while (true)
             {
                 Console.Write("> ");
@@ -44,7 +51,8 @@ namespace DidacticalEnigma.English.CLI
                 }, 
                 () =>
                 {
-                    Console.WriteLine("sorry, not found");
+                    Console.WriteLine("fall back to generic hyphenator");
+                    Console.WriteLine(hypenator.HyphenateText(line));
                 });
                 var lookupResult = wordnet.Lookup(line);
                 foreach (var entry in lookupResult)

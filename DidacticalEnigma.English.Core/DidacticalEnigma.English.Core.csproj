@@ -2,15 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <IncludeGeneratorSharedCode>true</IncludeGeneratorSharedCode>
+    <RestoreAdditionalProjectSources>https://azuresdkartifacts.blob.core.windows.net/azure-sdk-tools/index.json</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Core" Version="1.22.0" />
     <PackageReference Include="TinyIndex" Version="0.4.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DidacticalEnigma.English.Parsing\DidacticalEnigma.English.Parsing.csproj" />
     <PackageReference Include="NHyphenator" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.AutoRest.CSharp" Version="3.0.0-beta.20210311.1" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

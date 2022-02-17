@@ -84,13 +84,13 @@ namespace DidacticalEnigma.English.Core
         private void Init(Stream stream, string cachePath)
         {
             var entrySerializer = Serializer.ForKeyValuePair(
-                Serializer.ForStringAsUTF8(),
+                Serializer.ForStringAsUtf8(),
                 Serializer.ForReadOnlyList(
                     Serializer.ForComposite()
                         .With(Serializer.ForEnum<PartOfSpeech>())
-                        .With(Serializer.ForStringAsUTF8())
-                        .With(Serializer.ForReadOnlyList(Serializer.ForStringAsUTF8()))
-                        .With(Serializer.ForReadOnlyList(Serializer.ForStringAsUTF8()))
+                        .With(Serializer.ForStringAsUtf8())
+                        .With(Serializer.ForReadOnlyList(Serializer.ForStringAsUtf8()))
+                        .With(Serializer.ForReadOnlyList(Serializer.ForStringAsUtf8()))
                         .Create()
                         .Mapping(
                             raw => new WordnetDictionaryMeaning(

@@ -3,23 +3,28 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using DidacticalEnigma.English.Core;
+using DidacticalEnigma.English.Core.Scraping;
 using DidacticalEnigma.English.Parsing;
 using DidacticalEnigma.English.Parsing.Models;
 using NHyphenator;
 using NHyphenator.Loaders;
 using Optional;
+using ScrapySharp.Network;
 
 namespace DidacticalEnigma.English.CLI
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var wordnet = new WordnetDictionary(
-                "/media/milleniumbug/stuff/asdf/english_resources/english-wordnet-2020.xml",
-                "/media/milleniumbug/stuff/asdf/english_resources/wordnet.cache");
+                "/home/milleniumbug/dokumenty/asdf/english_resources/english-wordnet-2020.xml",
+                "/home/milleniumbug/dokumenty/asdf/english_resources/wordnet.cache");
             
             var latin1 = Encoding.GetEncoding("iso-8859-1");
             var hyphenationList = HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
@@ -27,33 +32,73 @@ namespace DidacticalEnigma.English.CLI
                     .OrderBy(hyphentationInfo => hyphentationInfo.Word, StringComparer.InvariantCulture)
                     .ToList();
             string? line;
-            
-            var loader = new ResourceHyphenatePatternsLoader(HyphenatePatternsLanguage.EnglishUs);
-            Hyphenator hypenator = new Hyphenator(loader, "-");
 
+            if(args.Contains("-"))
+            {
+                var loader = new ResourceHyphenatePatternsLoader(HyphenatePatternsLanguage.EnglishUs);
+                Hyphenator genericHyphenator = new Hyphenator(loader, "-");
+
+                var hyphenator = MakeWordHyphenator(hyphenationList, genericHyphenator);
+                RegularLoop(wordnet, hyphenator);
+            }
+            else
+            {
+                await using var hyphenator = new MerriamWebsterScraperHyphenator(
+                    new SimpleJsonCache(
+                        "/home/milleniumbug/dokumenty/asdf/english_resources/merriam_webster_hyphenation.json"),
+                    new CachingScraper("/home/milleniumbug/dokumenty/asdf/english_resources/merriamwebsterpages",
+                        new ScrapingBrowser()
+                        {
+                            Encoding = Encoding.UTF8
+                        }));
+                await HyphenateClipboard(async word => string.Join("-", await hyphenator.Lookup(word)));
+            }
+        }
+
+        private static async Task HyphenateClipboard(Func<string, Task<string>> hyphenator)
+        {
+            var clipboardWatcher = new ClipwatchSharp.ClipboardWatcher();
+            clipboardWatcher.ClipboardChanged += async (sender, clipboard) =>
+            {
+                Console.WriteLine(await Hyphenate(clipboard));
+            };
+            clipboardWatcher.Start();
+            string? line = null;
+            while ((line = Console.ReadLine()) != null)
+            {
+                Console.WriteLine(Hyphenate(line));
+            }
+
+            async Task<string> Hyphenate(string clipboard)
+            {
+                var noPunctuation = new string(clipboard.Where(c => !char.IsPunctuation(c) || c == '\'' || c == '-').ToArray());
+                var hyphenated = new List<string>();
+                foreach (var word in noPunctuation.Split())
+                {
+                    if (Regex.IsMatch(word, "^[A-Za-z][A-Za-z'-]*$"))
+                    {
+                        hyphenated.Add(await hyphenator(word));                        
+                    }
+                    else
+                    {
+                        hyphenated.Add(word);
+                    }
+                }
+                return string.Join(" ", hyphenated);
+            }
+        }
+
+        private static void RegularLoop(WordnetDictionary wordnet, Func<string, string> hyphenator)
+        {
+            string? line;
             while (true)
             {
                 Console.Write("> ");
                 line = Console.ReadLine();
                 if (line == null)
                     break;
-                
-                var resultOpt = BinarySearch(
-                    hyphenationList,
-                    (list, index) => list[index],
-                    hyphenationList.Count,
-                    line,
-                    info => info.Word,
-                    StringComparer.InvariantCulture);
-                resultOpt.Match(result =>
-                {
-                    Console.WriteLine(string.Join("-", result.element.Syllables));                    
-                }, 
-                () =>
-                {
-                    Console.WriteLine("fall back to generic hyphenator");
-                    Console.WriteLine(hypenator.HyphenateText(line));
-                });
+
+                Console.WriteLine(hyphenator(line));
                 var lookupResult = wordnet.Lookup(line);
                 foreach (var entry in lookupResult)
                 {
@@ -70,7 +115,27 @@ namespace DidacticalEnigma.English.CLI
                 }
             }
         }
-        
+
+        private static Func<string, string> MakeWordHyphenator(List<HyphenationInfo> hyphenationList, Hyphenator hypenator)
+        {
+            return word =>
+            {
+                var resultOpt = BinarySearch(
+                    hyphenationList,
+                    (list, index) => list[index],
+                    hyphenationList.Count,
+                    word,
+                    info => info.Word,
+                    StringComparer.InvariantCulture);
+                return resultOpt
+                    .Map(
+                        result =>
+                            string.Join("-", result.element.Syllables))
+                    .ValueOr(() =>
+                        hypenator.HyphenateText(word));
+            };
+        }
+
         public static Option<(T element, int index)> BinarySearch<T, TCollection, TKey>(
             TCollection collection,
             Func<TCollection, int, T> lookup,

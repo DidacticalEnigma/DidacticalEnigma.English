@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Core" Version="1.22.0" />
+    <PackageReference Include="ScrapySharp" Version="3.0.0" />
     <PackageReference Include="TinyIndex" Version="0.4.0" />
   </ItemGroup>
 

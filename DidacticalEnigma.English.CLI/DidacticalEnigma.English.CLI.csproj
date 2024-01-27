@@ -12,6 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="ClipwatchSharp" Version="0.1.2" />
       <PackageReference Include="Optional" Version="4.0.0" />
     </ItemGroup>
 

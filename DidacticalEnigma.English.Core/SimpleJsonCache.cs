@@ -14,22 +14,50 @@ public class SimpleJsonCache : IDictionary<string, IReadOnlyList<string>>, IDisp
     private Dictionary<string, IReadOnlyList<string>> DataImpl;
     private IDictionary<string, IReadOnlyList<string>> Data => DataImpl;
 
-    public SimpleJsonCache(string path)
+    private SimpleJsonCache(string path)
     {
         filePath = path;
         DataImpl = new Dictionary<string, IReadOnlyList<string>>();
     }
 
+    public static SimpleJsonCache Create(string path)
+    {
+        var c = new SimpleJsonCache(path);
+        c.Load();
+        return c;
+    }
+    
+    public static async Task<SimpleJsonCache> CreateAsync(string path)
+    {
+        var c = new SimpleJsonCache(path);
+        await c.LoadAsync();
+        return c;
+    }
+
     public void Load()
     {
-        DataImpl = JsonSerializer.Deserialize<Dictionary<string, IReadOnlyList<string>>>(
-            File.ReadAllText(filePath));
+        try
+        {
+            DataImpl = JsonSerializer.Deserialize<Dictionary<string, IReadOnlyList<string>>>(
+                File.ReadAllText(filePath));
+        }
+        catch (FileNotFoundException)
+        {
+            // do nothing
+        }
     }
     
     public async Task LoadAsync()
     {
-        DataImpl = JsonSerializer.Deserialize<Dictionary<string, IReadOnlyList<string>>>(
+        try
+        {
+            DataImpl = JsonSerializer.Deserialize<Dictionary<string, IReadOnlyList<string>>>(
             await File.ReadAllTextAsync(filePath));
+        }
+        catch (FileNotFoundException)
+        {
+            // do nothing
+        }
     }
 
     public void Save()

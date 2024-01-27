@@ -27,6 +27,11 @@ public class MerriamWebsterScraperHyphenator : IDisposable, IAsyncDisposable
         _scraper = scraper;
     }
 
+    public async Task SaveCacheAsync()
+    {
+        await _cache.SaveAsync();
+    }
+
     public void Dispose()
     {
         _cache.Dispose();

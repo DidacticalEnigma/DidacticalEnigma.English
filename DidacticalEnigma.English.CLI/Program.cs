@@ -44,19 +44,20 @@ namespace DidacticalEnigma.English.CLI
             else
             {
                 await using var hyphenator = new MerriamWebsterScraperHyphenator(
-                    new SimpleJsonCache(
+                    await SimpleJsonCache.CreateAsync(
                         "/home/milleniumbug/dokumenty/asdf/english_resources/merriam_webster_hyphenation.json"),
                     new CachingScraper("/home/milleniumbug/dokumenty/asdf/english_resources/merriamwebsterpages",
                         new ScrapingBrowser()
                         {
                             Encoding = Encoding.UTF8
                         }));
-                await HyphenateClipboard(async word => string.Join("-", await hyphenator.Lookup(word)));
+                await HyphenateClipboard(hyphenator);
             }
         }
 
-        private static async Task HyphenateClipboard(Func<string, Task<string>> hyphenator)
+        private static async Task HyphenateClipboard(MerriamWebsterScraperHyphenator hyphenator)
         {
+            
             var clipboardWatcher = new ClipwatchSharp.ClipboardWatcher();
             clipboardWatcher.ClipboardChanged += async (sender, clipboard) =>
             {
@@ -77,13 +78,15 @@ namespace DidacticalEnigma.English.CLI
                 {
                     if (Regex.IsMatch(word, "^[A-Za-z][A-Za-z'-]*$"))
                     {
-                        hyphenated.Add(await hyphenator(word));                        
+                        hyphenated.Add(string.Join("-", await hyphenator.Lookup(word)));                        
                     }
                     else
                     {
                         hyphenated.Add(word);
                     }
                 }
+
+                await hyphenator.SaveCacheAsync();
                 return string.Join(" ", hyphenated);
             }
         }

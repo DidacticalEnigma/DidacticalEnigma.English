@@ -50,7 +50,7 @@ namespace DidacticalEnigma.English.CLI
                         {
                             Encoding = Encoding.UTF8
                         },
-                        new LocalDirectoryCache("/home/milleniumbug/dokumenty/asdf/english_resources/merriamwebsterpages")));
+                        new NullCache<string, string>()));
                 await HyphenateClipboard(hyphenator);
             }
         }

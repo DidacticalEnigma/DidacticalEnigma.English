@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.IO;
 using System.Net;
@@ -5,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using DidacticalEnigma.English.Core.Caching;
 using HtmlAgilityPack;
 using ScrapySharp.Network;
 
@@ -12,46 +14,49 @@ namespace DidacticalEnigma.English.Core.Scraping;
 
 public class CachingScraper
 {
-    private readonly string _documentStorageDirectoryPath;
     private readonly ScrapingBrowser _browser;
+    private readonly ICache<string, string> _cache;
 
-    public CachingScraper(string documentStorageDirectoryPath, ScrapingBrowser browser)
+    public CachingScraper(
+        ScrapingBrowser browser,
+        ICache<string, string> cache)
     {
-        _documentStorageDirectoryPath = documentStorageDirectoryPath;
         _browser = browser;
+        _cache = cache;
     }
 
     public async Task<WebDocument> DownloadAsync(string url)
     {
-        using (var hasher = SHA1.Create())
-        {
-            var hash = hasher.ComputeHash(Encoding.UTF8.GetBytes(url));
-            var id = BitConverter.ToString(hash).Replace("-", "");
-            var filename = id + ".html";
-            var path = Path.Combine(_documentStorageDirectoryPath, filename);
-            var html = new HtmlDocument();
+        var html = new HtmlDocument();
 
+        var rawHtml = await _cache.Get(url);
+        if(rawHtml != null)
+        {
+            html.LoadHtml(rawHtml);
+        }
+        else
+        {
             try
             {
-                html.LoadHtml(await File.ReadAllTextAsync(path));
+                rawHtml = await _browser.DownloadStringAsync(new Uri(url));
+                await _cache.Set(url, rawHtml);
             }
-            catch (FileNotFoundException)
+            catch (WebException ex)
             {
-                string p;
-                try
+                var status = ex.Status;
+                var code = (ex.Response as HttpWebResponse)?.StatusCode;
+                if (code == null)
                 {
-                    p = await _browser.DownloadStringAsync(new Uri(url));
+                    throw;
                 }
-                catch (WebException ex)
-                {
-                    p =
-                        $"<html>{HttpUtility.HtmlEncode(ex.Status.ToString())}<br>{HttpUtility.HtmlEncode(((ex.Response as HttpWebResponse)?.StatusCode).ToString())}</html>";
-                }
-                await File.WriteAllTextAsync(path, p);
-                html.LoadHtml(p);
+                rawHtml =
+                    $"<html>{HttpUtility.HtmlEncode(status.ToString())}<br>{HttpUtility.HtmlEncode(code.ToString())}</html>";
+                await _cache.Set(url, rawHtml);
             }
 
-            return new WebDocument(html, url, id);
+            html.LoadHtml(rawHtml);
         }
+
+        return new WebDocument(html, url);
     }
 }

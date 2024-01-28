@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using DidacticalEnigma.English.Core;
+using DidacticalEnigma.English.Core.Caching;
 using DidacticalEnigma.English.Core.Scraping;
 using DidacticalEnigma.English.Parsing;
 using DidacticalEnigma.English.Parsing.Models;
@@ -22,19 +23,17 @@ namespace DidacticalEnigma.English.CLI
     {
         static async Task Main(string[] args)
         {
-            var wordnet = new WordnetDictionary(
-                "/home/milleniumbug/dokumenty/asdf/english_resources/english-wordnet-2020.xml",
-                "/home/milleniumbug/dokumenty/asdf/english_resources/wordnet.cache");
+            if(args.Contains("-"))
+            {
+                var wordnet = new WordnetDictionary(
+                    "/home/milleniumbug/dokumenty/asdf/english_resources/english-wordnet-2020.xml",
+                    "/home/milleniumbug/dokumenty/asdf/english_resources/wordnet.cache");
             
-            var latin1 = Encoding.GetEncoding("iso-8859-1");
-            var hyphenationList = HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
+                var latin1 = Encoding.GetEncoding("iso-8859-1");
+                var hyphenationList = HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/Syllables.txt", ((char)183).ToString(), latin1)
                     .Concat(HyphenationFileReader.ReadFromFile("/home/milleniumbug/dokumenty/asdf/english_resources/delphiforfun/SyllablesUpdate.txt", " ", latin1))
                     .OrderBy(hyphentationInfo => hyphentationInfo.Word, StringComparer.InvariantCulture)
                     .ToList();
-            string? line;
-
-            if(args.Contains("-"))
-            {
                 var loader = new ResourceHyphenatePatternsLoader(HyphenatePatternsLanguage.EnglishUs);
                 Hyphenator genericHyphenator = new Hyphenator(loader, "-");
 
@@ -44,20 +43,20 @@ namespace DidacticalEnigma.English.CLI
             else
             {
                 await using var hyphenator = new MerriamWebsterScraperHyphenator(
-                    await SimpleJsonCache.CreateAsync(
+                    await JsonFileCache.CreateAsync(
                         "/home/milleniumbug/dokumenty/asdf/english_resources/merriam_webster_hyphenation.json"),
-                    new CachingScraper("/home/milleniumbug/dokumenty/asdf/english_resources/merriamwebsterpages",
+                    new CachingScraper(
                         new ScrapingBrowser()
                         {
                             Encoding = Encoding.UTF8
-                        }));
+                        },
+                        new LocalDirectoryCache("/home/milleniumbug/dokumenty/asdf/english_resources/merriamwebsterpages")));
                 await HyphenateClipboard(hyphenator);
             }
         }
 
         private static async Task HyphenateClipboard(MerriamWebsterScraperHyphenator hyphenator)
         {
-            
             var clipboardWatcher = new ClipwatchSharp.ClipboardWatcher();
             clipboardWatcher.ClipboardChanged += async (sender, clipboard) =>
             {
@@ -72,13 +71,13 @@ namespace DidacticalEnigma.English.CLI
 
             async Task<string> Hyphenate(string clipboard)
             {
-                var noPunctuation = new string(clipboard.Where(c => !char.IsPunctuation(c) || c == '\'' || c == '-').ToArray());
                 var hyphenated = new List<string>();
-                foreach (var word in noPunctuation.Split())
+                foreach (var word in Regex.Split(clipboard, @"\s+"))
                 {
-                    if (Regex.IsMatch(word, "^[A-Za-z][A-Za-z'-]*$"))
+                    var match = Regex.Match(word, @"^\p{P}*([A-Za-z][A-Za-z'-]*[A-Za-z])\p{P}*$");
+                    if (match.Success)
                     {
-                        hyphenated.Add(string.Join("-", await hyphenator.Lookup(word)));                        
+                        hyphenated.Add(string.Join("-", await hyphenator.Lookup(match.Groups[1].Value)));                        
                     }
                     else
                     {

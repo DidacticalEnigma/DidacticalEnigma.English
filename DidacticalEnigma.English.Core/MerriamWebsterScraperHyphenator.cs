@@ -9,19 +9,20 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using DidacticalEnigma.English.Core.Caching;
 using DidacticalEnigma.English.Core.Scraping;
 using HtmlAgilityPack;
 using ScrapySharp.Extensions;
 
 namespace DidacticalEnigma.English.Core;
 
-public class MerriamWebsterScraperHyphenator : IDisposable, IAsyncDisposable
+public class MerriamWebsterScraperHyphenator : IAsyncDisposable
 {
-    private readonly SimpleJsonCache _cache;
+    private readonly ICache<string, IReadOnlyList<string>> _cache;
     private readonly CachingScraper _scraper;
     private readonly CultureInfo enUsCultureInfo = new CultureInfo("en-US");
 
-    public MerriamWebsterScraperHyphenator(SimpleJsonCache cache, CachingScraper scraper)
+    public MerriamWebsterScraperHyphenator(ICache<string, IReadOnlyList<string>> cache, CachingScraper scraper)
     {
         _cache = cache;
         _scraper = scraper;
@@ -29,17 +30,12 @@ public class MerriamWebsterScraperHyphenator : IDisposable, IAsyncDisposable
 
     public async Task SaveCacheAsync()
     {
-        await _cache.SaveAsync();
-    }
-
-    public void Dispose()
-    {
-        _cache.Dispose();
+        await _cache.ForceSave();
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _cache.DisposeAsync();
+        await _cache.ForceSave();
     }
 
     private string Normalize(string word)
@@ -50,14 +46,15 @@ public class MerriamWebsterScraperHyphenator : IDisposable, IAsyncDisposable
     public async Task<IReadOnlyList<string>> Lookup(string word)
     {
         word = Normalize(word);
-        if (_cache.TryGetValue(word, out IReadOnlyList<string> split))
+        var split = await _cache.Get(word);
+        if (split != null)
         {
             return split;
         }
         else
         {
             var scrape = new ReadOnlyCollection<string>(await Scrape(word));
-            _cache[word] = scrape;
+            await _cache.Set(word, scrape);
             return scrape;
         }
     }
